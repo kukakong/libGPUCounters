@@ -30,6 +30,10 @@ if(HWCPIPE_SYSCALL_LIBMALI)
     target_compile_definitions(gpu-counter-tool PRIVATE HWCPIPE_SYSCALL_LIBMALI=1)
 endif()
 
+if(ANDROID)
+    target_link_libraries(gpu-counter-tool PRIVATE log)
+endif()
+
 target_compile_options(gpu-counter-tool
     PRIVATE -Werror
             -Wswitch-default
