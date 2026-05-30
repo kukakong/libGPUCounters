@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gpu-counter-tool 使用指南</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --color-bg:#f8f9fb;
+  --color-surface:#ffffff;
+  --color-border:#e2e6ed;
+  --color-text:#1a1d23;
+  --color-text-secondary:#5a6170;
+  --color-accent:#3b6fdb;
+  --color-accent-light:#e8f0fe;
+  --color-code-bg:#1e2028;
+  --color-code-text:#c8ccd4;
+  --color-code-keyword:#c678dd;
+  --color-code-string:#98c379;
+  --color-code-comment:#5c6370;
+  --color-code-command:#61afef;
+  --color-sidebar-bg:#1a1d23;
+  --color-sidebar-text:#a0a8b8;
+  --color-sidebar-active:#ffffff;
+  --color-sidebar-hover-bg:#2a2d35;
+  --color-table-header:#f1f3f7;
+  --sidebar-width:260px;
+}
+html{scroll-behavior:smooth;font-size:16px}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:var(--color-bg);
+  color:var(--color-text);
+  line-height:1.7;
+  display:flex;
+  min-height:100vh;
+}
+a{color:var(--color-accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* Sidebar */
+.sidebar{
+  position:fixed;
+  top:0;left:0;
+  width:var(--sidebar-width);
+  height:100vh;
+  background:var(--color-sidebar-bg);
+  overflow-y:auto;
+  z-index:100;
+  display:flex;
+  flex-direction:column;
+  transition:transform .3s ease;
+}
+.sidebar-header{
+  padding:24px 20px 16px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.sidebar-header h2{
+  color:#fff;
+  font-size:15px;
+  font-weight:600;
+  letter-spacing:.3px;
+}
+.sidebar-header span{
+  color:var(--color-sidebar-text);
+  font-size:12px;
+  display:block;
+  margin-top:4px;
+}
+.sidebar-nav{padding:12px 0;flex:1}
+.sidebar-nav a{
+  display:block;
+  padding:8px 20px 8px 24px;
+  color:var(--color-sidebar-text);
+  font-size:13.5px;
+  line-height:1.5;
+  text-decoration:none;
+  transition:all .15s ease;
+  border-left:3px solid transparent;
+}
+.sidebar-nav a:hover{
+  background:var(--color-sidebar-hover-bg);
+  color:var(--color-sidebar-active);
+}
+.sidebar-nav a.active{
+  color:var(--color-sidebar-active);
+  border-left-color:var(--color-accent);
+  background:var(--color-sidebar-hover-bg);
+}
+.sidebar-nav .nav-number{
+  display:inline-block;
+  width:20px;
+  color:rgba(255,255,255,.25);
+  font-size:12px;
+  margin-right:4px;
+}
+
+/* Main content */
+.main{
+  margin-left:var(--sidebar-width);
+  flex:1;
+  min-width:0;
+}
+.main-inner{
+  max-width:860px;
+  margin:0 auto;
+  padding:40px 48px 80px;
+}
+
+/* Header */
+.page-header{
+  margin-bottom:40px;
+  padding-bottom:24px;
+  border-bottom:1px solid var(--color-border);
+}
+.page-header h1{
+  font-size:28px;
+  font-weight:700;
+  color:var(--color-text);
+  margin-bottom:6px;
+}
+.page-header .subtitle{
+  font-size:15px;
+  color:var(--color-text-secondary);
+}
+
+/* Sections */
+.section{
+  margin-bottom:48px;
+  scroll-margin-top:24px;
+}
+.section h2{
+  font-size:22px;
+  font-weight:700;
+  color:var(--color-text);
+  margin-bottom:16px;
+  padding-bottom:8px;
+  border-bottom:2px solid var(--color-accent);
+  display:inline-block;
+}
+.section h3{
+  font-size:17px;
+  font-weight:600;
+  color:var(--color-text);
+  margin:24px 0 10px;
+}
+.section p{
+  margin-bottom:12px;
+  color:var(--color-text);
+}
+.section ul,.section ol{
+  margin:8px 0 16px 24px;
+}
+.section li{
+  margin-bottom:6px;
+}
+
+/* Code blocks */
+pre{
+  background:var(--color-code-bg);
+  color:var(--color-code-text);
+  border-radius:8px;
+  padding:16px 20px;
+  overflow-x:auto;
+  margin:12px 0 16px;
+  font-family:"JetBrains Mono","Fira Code","Cascadia Code","Source Code Pro",Consolas,monospace;
+  font-size:13.5px;
+  line-height:1.65;
+  position:relative;
+}
+pre code{
+  font-family:inherit;
+  font-size:inherit;
+  color:inherit;
+  background:none;
+}
+code{
+  font-family:"JetBrains Mono","Fira Code","Cascadia Code","Source Code Pro",Consolas,monospace;
+  font-size:13px;
+  background:var(--color-accent-light);
+  color:var(--color-accent);
+  padding:2px 6px;
+  border-radius:4px;
+}
+
+/* Tables */
+.table-wrap{
+  overflow-x:auto;
+  margin:12px 0 16px;
+  border-radius:8px;
+  border:1px solid var(--color-border);
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px;
+}
+thead{background:var(--color-table-header)}
+th{
+  text-align:left;
+  padding:10px 16px;
+  font-weight:600;
+  color:var(--color-text);
+  border-bottom:2px solid var(--color-border);
+  white-space:nowrap;
+}
+td{
+  padding:10px 16px;
+  border-bottom:1px solid var(--color-border);
+  color:var(--color-text);
+}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(59,111,219,.03)}
+
+/* Callout boxes */
+.callout{
+  border-radius:8px;
+  padding:14px 18px;
+  margin:14px 0 18px;
+  font-size:14px;
+  line-height:1.6;
+}
+.callout-important{
+  background:#fef3e2;
+  border-left:4px solid #e6a23c;
+  color:#7a5a1a;
+}
+.callout-note{
+  background:var(--color-accent-light);
+  border-left:4px solid var(--color-accent);
+  color:#2a4a8a;
+}
+.callout strong{
+  display:block;
+  margin-bottom:4px;
+  font-size:14px;
+}
+
+/* Mobile hamburger */
+.hamburger{
+  display:none;
+  position:fixed;
+  top:12px;left:12px;
+  z-index:200;
+  width:40px;height:40px;
+  background:var(--color-sidebar-bg);
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+}
+.hamburger span{
+  display:block;
+  width:20px;
+  height:2px;
+  background:#fff;
+  border-radius:2px;
+  transition:all .3s ease;
+}
+.overlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.4);
+  z-index:90;
+}
+
+/* Responsive */
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .main-inner{padding:60px 20px 60px}
+  .hamburger{display:flex}
+  .overlay.show{display:block}
+  .page-header h1{font-size:22px}
+  .section h2{font-size:19px}
+}
+</style>
+</head>
+<body>
+
+<button class="hamburger" id="hamburger" aria-label="打开导航">
+  <span></span><span></span><span></span>
+</button>
+<div class="overlay" id="overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <h2>gpu-counter-tool</h2>
+    <span>libGPUCounters 使用指南</span>
+  </div>
+  <nav class="sidebar-nav" id="sidebarNav">
+    <a href="#quick-start"><span class="nav-number">1</span>快速入门</a>
+    <a href="#list-gpus"><span class="nav-number">2</span>列出 GPU 和计数器</a>
+    <a href="#sampling"><span class="nav-number">3</span>采样所有计数器</a>
+    <a href="#csv-output"><span class="nav-number">4</span>输出到 CSV 文件</a>
+    <a href="#duration"><span class="nav-number">5</span>基于时长的监控</a>
+    <a href="#process"><span class="nav-number">6</span>基于进程名的监控</a>
+    <a href="#pid"><span class="nav-number">7</span>基于 PID 的监控</a>
+    <a href="#android"><span class="nav-number">8</span>Android 平台使用</a>
+    <a href="#linux"><span class="nav-number">9</span>Linux 平台使用</a>
+    <a href="#output"><span class="nav-number">10</span>理解输出结果</a>
+    <a href="#troubleshooting"><span class="nav-number">11</span>常见问题排查</a>
+    <a href="#env-vars"><span class="nav-number">12</span>环境变量</a>
+  </nav>
+</aside>
+
+<main class="main">
+<div class="main-inner">
+
+<div class="page-header">
+  <h1>gpu-counter-tool 使用指南</h1>
+  <div class="subtitle">libGPUCounters 项目 — Mali GPU 性能计数器采样工具</div>
+</div>
+
+<!-- 1. 快速入门 -->
+<section class="section" id="quick-start">
+<h2>快速入门</h2>
+<p><code>gpu-counter-tool</code> 是 libGPUCounters 项目提供的命令行工具，用于对 Mali GPU 的硬件性能计数器进行实时采样和记录。</p>
+
+<h3>基本用法</h3>
+<pre><code># 查看帮助信息
+gpu-counter-tool -h
+
+# 列出所有检测到的 GPU 设备
+gpu-counter-tool --list-gpus
+
+# 以默认参数采样所有计数器（100ms 间隔，持续运行直到 Ctrl+C）
+gpu-counter-tool</code></pre>
+
+<h3>命令行选项一览</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>选项</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><code>--list-gpus</code></td><td>列出所有检测到的 GPU 设备</td></tr>
+<tr><td><code>--list-counters</code></td><td>列出当前 GPU 支持的所有计数器</td></tr>
+<tr><td><code>-d, --device N</code></td><td>指定 GPU 设备编号（默认：0）</td></tr>
+<tr><td><code>-i, --interval MS</code></td><td>采样间隔，单位毫秒（默认：100）</td></tr>
+<tr><td><code>-t, --duration SEC</code></td><td>监控时长，单位秒（0 表示持续运行直到 Ctrl+C）</td></tr>
+<tr><td><code>-o, --output FILE</code></td><td>将计数器数据写入 CSV 文件</td></tr>
+<tr><td><code>-p, --process NAME</code></td><td>仅在指定进程运行期间进行监控</td></tr>
+<tr><td><code>--pid PID</code></td><td>仅在指定 PID 存活期间进行监控</td></tr>
+<tr><td><code>-v, --verbose</code></td><td>详细输出模式</td></tr>
+<tr><td><code>-h, --help</code></td><td>显示帮助信息</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- 2. 列出 GPU 和计数器 -->
+<section class="section" id="list-gpus">
+<h2>列出 GPU 和计数器</h2>
+
+<h3>列出 GPU 设备</h3>
+<p>在开始采样之前，建议先确认系统中检测到了哪些 GPU 设备：</p>
+<pre><code>gpu-counter-tool --list-gpus</code></pre>
+<p>输出示例：</p>
+<pre><code>GPU Device 0: Mali-G78, /dev/mali0
+GPU Device 1: Mali-G57, /dev/mali1</code></pre>
+<p>如果系统中有多个 GPU，可以使用 <code>-d</code> 选项指定设备编号：</p>
+<pre><code>gpu-counter-tool -d 1 --list-counters</code></pre>
+
+<h3>列出支持的计数器</h3>
+<p>每个 GPU 型号支持的计数器集合可能不同。使用 <code>--list-counters</code> 查看当前设备支持的所有计数器：</p>
+<pre><code>gpu-counter-tool --list-counters</code></pre>
+<p>输出示例：</p>
+<pre><code>GPU Cycles
+GPU Active Cycles
+Fragment Active Cycles
+Compute Active Cycles
+Vertex/Tiler Active Cycles
+Fragment Jobs
+Compute Jobs
+Vertex/Tiler Jobs
+...</code></pre>
+<p>结合 <code>-v</code> 选项可以获取更详细的计数器描述信息：</p>
+<pre><code>gpu-counter-tool -v --list-counters</code></pre>
+</section>
+
+<!-- 3. 采样所有计数器 -->
+<section class="section" id="sampling">
+<h2>采样所有计数器</h2>
+<p>不带任何过滤参数运行时，工具将采样当前 GPU 设备支持的所有计数器：</p>
+<pre><code># 以默认 100ms 间隔采样，持续运行直到按 Ctrl+C
+gpu-counter-tool
+
+# 以 50ms 间隔采样
+gpu-counter-tool -i 50
+
+# 指定 GPU 设备编号
+gpu-counter-tool -d 0 -i 200</code></pre>
+<p>运行时，计数器数据将实时输出到终端。按 <code>Ctrl+C</code> 可停止采样。</p>
+
+<h3>采样间隔说明</h3>
+<p>采样间隔（<code>-i</code> 选项）决定了两次采样之间的时间间隔：</p>
+<ul>
+<li><strong>较小的间隔</strong>（如 10ms）：更高的时间分辨率，但可能增加系统开销</li>
+<li><strong>较大的间隔</strong>（如 500ms）：较低的开销，但可能遗漏短时峰值</li>
+</ul>
+<p>建议根据实际场景选择合适的间隔。对于大多数性能分析场景，100ms（默认值）是一个不错的平衡点。</p>
+</section>
+
+<!-- 4. 输出到 CSV 文件 -->
+<section class="section" id="csv-output">
+<h2>输出到 CSV 文件</h2>
+<p>使用 <code>-o</code> 选项可以将采样数据写入 CSV 文件，方便后续分析和可视化：</p>
+<pre><code>gpu-counter-tool -o output.csv -t 30</code></pre>
+
+<h3>CSV 文件格式</h3>
+<p>CSV 文件的第一行为表头，后续每行对应一次采样：</p>
+<pre><code>timestamp_ns,GPU Cycles,GPU Active Cycles,Fragment Active Cycles,...
+1704067200000000000,123456789,98765432,54321098,...
+1704067200100000000,234567890,187654321,104321098,...</code></pre>
+
+<p><strong>格式说明：</strong></p>
+<ul>
+<li><strong>timestamp_ns</strong>：采样时间戳，单位为纳秒</li>
+<li><strong>后续列</strong>：各计数器的名称，与 <code>--list-counters</code> 输出一致</li>
+<li><strong>数值</strong>：计数器的累计值或增量值</li>
+</ul>
+
+<h3>示例</h3>
+<pre><code># 采样 60 秒并保存到 CSV
+gpu-counter-tool -o gpu_data.csv -t 60
+
+# 以 50ms 间隔采样并保存
+gpu-counter-tool -i 50 -o gpu_data.csv -t 30
+
+# 指定设备并保存
+gpu-counter-tool -d 1 -o gpu1_data.csv -t 60</code></pre>
+</section>
+
+<!-- 5. 基于时长的监控 -->
+<section class="section" id="duration">
+<h2>基于时长的监控</h2>
+<p>使用 <code>-t</code> 选项可以指定监控的持续时间（单位：秒）：</p>
+<pre><code># 监控 30 秒后自动停止
+gpu-counter-tool -t 30
+
+# 监控 5 分钟（300 秒）
+gpu-counter-tool -t 300
+
+# 监控 60 秒并保存到 CSV
+gpu-counter-tool -t 60 -o result.csv</code></pre>
+<p>当 <code>-t 0</code> 或未指定 <code>-t</code> 选项时，工具将持续运行直到用户按下 <code>Ctrl+C</code>。</p>
+
+<h3>典型场景</h3>
+<pre><code># 对应用启动过程进行 10 秒采样
+gpu-counter-tool -t 10 -i 10 -o app_startup.csv
+
+# 对游戏场景进行 5 分钟采样
+gpu-counter-tool -t 300 -i 50 -o game_scene.csv</code></pre>
+</section>
+
+<!-- 6. 基于进程名的监控 -->
+<section class="section" id="process">
+<h2>基于进程名的监控</h2>
+<p>使用 <code>-p</code> 选项可以指定一个进程名，工具将仅在该进程运行期间进行监控：</p>
+<pre><code># 仅在 my_app 进程运行时采样
+gpu-counter-tool -p my_app -o my_app_gpu.csv</code></pre>
+
+<h3>工作原理</h3>
+<div class="callout callout-important">
+<strong>重要说明</strong>
+Mali GPU 的性能计数器是<strong>系统级（system-wide）</strong>的，而非进程级（per-process）的。这意味着计数器反映的是整个 GPU 的活动状态，无法单独隔离某个进程的 GPU 使用情况。
+</div>
+<p><code>-p</code> 选项的工作方式是：</p>
+<ol>
+<li>工具启动后，轮询检查指定名称的进程是否存在</li>
+<li>当目标进程出现时，开始采样计数器数据</li>
+<li>当目标进程退出时，停止采样并结束</li>
+</ol>
+<p>因此，采样数据中包含了<strong>整个 GPU</strong> 在该时间段内的活动，而不仅仅是目标进程的 GPU 使用。如果需要更精确的进程级分析，建议结合其他工具（如 <code>perf</code>）进行综合分析。</p>
+
+<h3>示例</h3>
+<pre><code># 监控游戏进程运行期间的 GPU 活动
+gpu-counter-tool -p com.game.title -o game_gpu.csv
+
+# 配合采样间隔使用
+gpu-counter-tool -p my_render_app -i 50 -o render.csv</code></pre>
+</section>
+
+<!-- 7. 基于 PID 的监控 -->
+<section class="section" id="pid">
+<h2>基于 PID 的监控</h2>
+<p>使用 <code>--pid</code> 选项可以指定一个进程 ID，工具将仅在该 PID 存活期间进行监控：</p>
+<pre><code># 监控 PID 为 12345 的进程
+gpu-counter-tool --pid 12345 -o pid_gpu.csv</code></pre>
+
+<h3>与 -p 选项的区别</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>选项</th><th>输入</th><th>适用场景</th></tr></thead>
+<tbody>
+<tr><td><code>-p, --process NAME</code></td><td>进程名</td><td>在进程启动前开始监控，等待目标进程出现</td></tr>
+<tr><td><code>--pid PID</code></td><td>进程 ID</td><td>已知进程 PID，监控该进程的存活期间</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>典型用法</h3>
+<pre><code># 先找到目标进程的 PID
+pidof my_app
+# 输出：98765
+
+# 使用 PID 监控
+gpu-counter-tool --pid 98765 -o result.csv
+
+# 也可以组合使用
+gpu-counter-tool --pid $(pidof my_app) -o result.csv</code></pre>
+</section>
+
+<!-- 8. Android 平台使用 -->
+<section class="section" id="android">
+<h2>Android 平台使用</h2>
+
+<h3>部署工具</h3>
+<p>在 Android 设备上使用 <code>gpu-counter-tool</code>，需要先将其推送到设备上：</p>
+<pre><code># 推送工具到设备
+adb push gpu-counter-tool /data/local/tmp/
+
+# 添加执行权限
+adb shell chmod +x /data/local/tmp/gpu-counter-tool</code></pre>
+
+<h3>运行工具</h3>
+<pre><code># 列出 GPU 设备
+adb shell /data/local/tmp/gpu-counter-tool --list-gpus
+
+# 列出计数器
+adb shell /data/local/tmp/gpu-counter-tool --list-counters
+
+# 采样 30 秒
+adb shell /data/local/tmp/gpu-counter-tool -t 30
+
+# 采样并保存到设备上的 CSV 文件
+adb shell /data/local/tmp/gpu-counter-tool -t 30 -o /data/local/tmp/gpu_data.csv
+
+# 将 CSV 文件拉取到本地
+adb pull /data/local/tmp/gpu_data.csv ./</code></pre>
+
+<h3>权限说明</h3>
+<p>在 Android 设备上访问 Mali GPU 计数器通常需要 root 权限：</p>
+<pre><code># 如果设备已 root，切换到 root
+adb root
+
+# 然后运行工具
+adb shell /data/local/tmp/gpu-counter-tool --list-counters</code></pre>
+<p>如果设备未 root，可能需要：</p>
+<ul>
+<li>使用 <code>adb shell su -c</code> 命令（需要设备已安装 su）</li>
+<li>设置 SELinux 为宽容模式：<code>adb shell setenforce 0</code>（需要 root）</li>
+</ul>
+
+<h3>libmali.so 路径</h3>
+<p>工具在 Android 上会自动搜索以下路径查找 <code>libmali.so</code>：</p>
+<pre><code>/vendor/lib64/egl/libGLES_mali.so
+/vendor/lib/egl/libGLES_mali.so
+/system/vendor/lib64/egl/libGLES_mali.so
+/system/vendor/lib/egl/libGLES_mali.so</code></pre>
+<p>如果 <code>libmali.so</code> 位于非标准路径，请参考<a href="#env-vars">环境变量</a>章节。</p>
+
+<h3>架构自动检测</h3>
+<p>工具会自动检测设备的 CPU 架构（arm64/arm/x86_64/x86），请确保推送了与设备架构匹配的二进制文件：</p>
+<pre><code># 查看设备架构
+adb shell getprop ro.product.cpu.abi</code></pre>
+</section>
+
+<!-- 9. Linux 平台使用 -->
+<section class="section" id="linux">
+<h2>Linux 平台使用</h2>
+
+<h3>基本运行</h3>
+<pre><code># 列出 GPU 设备
+gpu-counter-tool --list-gpus
+
+# 列出计数器
+gpu-counter-tool --list-counters
+
+# 采样 60 秒
+gpu-counter-tool -t 60 -o result.csv</code></pre>
+
+<h3>权限说明</h3>
+<p>访问 Mali GPU 硬件计数器需要访问 <code>/dev/mali</code> 设备节点，通常需要 root 权限：</p>
+<pre><code># 使用 sudo 运行
+sudo gpu-counter-tool --list-counters
+
+# 采样并保存
+sudo gpu-counter-tool -t 30 -o result.csv</code></pre>
+
+<h4>配置非 root 访问</h4>
+<p>如果希望不使用 <code>sudo</code> 运行，可以将当前用户添加到 <code>render</code> 或 <code>video</code> 组（取决于系统配置）：</p>
+<pre><code># 查看 /dev/mali 的权限
+ls -l /dev/mali*
+
+# 添加用户到 render 组
+sudo usermod -aG render $USER
+
+# 重新登录后生效</code></pre>
+<p>或者使用 udev 规则设置权限：</p>
+<pre><code># 创建 udev 规则
+echo 'KERNEL=="mali*", MODE="0666"' | sudo tee /etc/udev/rules.d/99-mali.rules
+
+# 重新加载 udev 规则
+sudo udevadm control --reload-rules
+sudo udevadm trigger</code></pre>
+
+<h3>libmali.so 路径</h3>
+<p>工具在 Linux 上会自动搜索以下路径查找 <code>libmali.so</code>：</p>
+<pre><code>/usr/lib64/libmali.so
+/usr/lib/libmali.so
+/usr/lib/aarch64-linux-gnu/libmali.so
+/usr/lib/arm-linux-gnueabihf/libmali.so</code></pre>
+<p>如果 <code>libmali.so</code> 位于非标准路径，请参考<a href="#env-vars">环境变量</a>章节。</p>
+</section>
+
+<!-- 10. 理解输出结果 -->
+<section class="section" id="output">
+<h2>理解输出结果</h2>
+
+<h3>终端输出</h3>
+<p>在终端运行时，工具会实时输出采样数据。每行包含时间戳和各计数器的值：</p>
+<pre><code>[1704067200.000] GPU Cycles: 123456789  GPU Active Cycles: 98765432  Fragment Jobs: 150
+[1704067200.100] GPU Cycles: 234567890  GPU Active Cycles: 187654321  Fragment Jobs: 280</code></pre>
+
+<h3>常见计数器含义</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>计数器名称</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>GPU Cycles</td><td>GPU 总时钟周期数</td></tr>
+<tr><td>GPU Active Cycles</td><td>GPU 活跃时钟周期数</td></tr>
+<tr><td>Fragment Active Cycles</td><td>片段着色阶段活跃周期数</td></tr>
+<tr><td>Compute Active Cycles</td><td>计算着色阶段活跃周期数</td></tr>
+<tr><td>Vertex/Tiler Active Cycles</td><td>顶点/Tiler 阶段活跃周期数</td></tr>
+<tr><td>Fragment Jobs</td><td>片段着色任务数</td></tr>
+<tr><td>Compute Jobs</td><td>计算着色任务数</td></tr>
+<tr><td>Vertex/Tiler Jobs</td><td>顶点/Tiler 任务数</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>性能分析提示</h3>
+<ul>
+<li><strong>GPU 利用率</strong>：<code>GPU Active Cycles / GPU Cycles</code> 可反映 GPU 的整体利用率</li>
+<li><strong>管线阶段分布</strong>：比较 Fragment、Compute、Vertex/Tiler 的活跃周期，可以判断 GPU 负载主要集中在哪个阶段</li>
+<li><strong>任务数量</strong>：Jobs 计数器反映各阶段提交的任务数，可用于评估工作负载</li>
+</ul>
+</section>
+
+<!-- 11. 常见问题排查 -->
+<section class="section" id="troubleshooting">
+<h2>常见问题排查</h2>
+
+<h3>未检测到 GPU 设备</h3>
+<p><strong>现象：</strong>运行 <code>--list-gpus</code> 时没有输出或提示 "No GPU found"</p>
+<p><strong>可能原因及解决方案：</strong></p>
+<ol>
+<li><strong>权限不足</strong>：确保有访问 <code>/dev/mali</code> 设备节点的权限
+<pre><code># Linux
+sudo gpu-counter-tool --list-gpus
+
+# Android
+adb root
+adb shell /data/local/tmp/gpu-counter-tool --list-gpus</code></pre>
+</li>
+<li><strong>GPU 驱动未安装</strong>：确认系统已安装 Mali GPU 驱动
+<pre><code># Linux 检查
+ls /dev/mali*
+
+# Android 检查
+adb shell ls /dev/mali*</code></pre>
+</li>
+<li><strong>设备节点不存在</strong>：某些嵌入式平台可能需要手动加载驱动模块
+<pre><code>sudo modprobe mali</code></pre>
+</li>
+</ol>
+
+<h3>采样器创建失败</h3>
+<p><strong>现象：</strong>提示 "Failed to create sampler" 或 "Sampler creation failed"</p>
+<p><strong>可能原因及解决方案：</strong></p>
+<ol>
+<li><strong>libmali.so 版本不兼容</strong>：确保 <code>libmali.so</code> 版本与 GPU 硬件匹配</li>
+<li><strong>驱动不支持性能计数器</strong>：某些旧版本驱动可能不支持硬件计数器接口，请升级 GPU 驱动</li>
+<li><strong>SELinux 限制</strong>（Android）：尝试设置宽容模式
+<pre><code>adb shell su -c setenforce 0</code></pre>
+</li>
+</ol>
+
+<h3>权限被拒绝</h3>
+<p><strong>现象：</strong>提示 "Permission denied" 访问 GPU 设备</p>
+<p><strong>解决方案：</strong></p>
+<ul>
+<li><strong>Linux</strong>：使用 <code>sudo</code> 运行，或将用户添加到适当的组（参见<a href="#linux">Linux 平台使用</a>）</li>
+<li><strong>Android</strong>：使用 <code>adb root</code> 或 <code>su</code> 获取 root 权限</li>
+</ul>
+
+<h3>libmali.so 未找到</h3>
+<p><strong>现象：</strong>提示 "libmali.so not found" 或 "Could not locate Mali library"</p>
+<p><strong>解决方案：</strong></p>
+<ol>
+<li>确认系统中存在 <code>libmali.so</code>：
+<pre><code># Linux
+find / -name "libmali.so" 2>/dev/null
+
+# Android
+adb shell find / -name "libmali.so" 2>/dev/null</code></pre>
+</li>
+<li>如果 <code>libmali.so</code> 位于非标准路径，使用环境变量指定（参见<a href="#env-vars">环境变量</a>）</li>
+<li>如果系统使用的是其他名称的 Mali 库（如 <code>libGLES_mali.so</code>），可以创建符号链接：
+<pre><code>sudo ln -s /path/to/libGLES_mali.so /usr/lib64/libmali.so</code></pre>
+</li>
+</ol>
+</section>
+
+<!-- 12. 环境变量 -->
+<section class="section" id="env-vars">
+<h2>环境变量</h2>
+
+<h3>HWCPIPE_BACKEND_INTERFACE</h3>
+<p>使用 <code>HWCPIPE_BACKEND_INTERFACE</code> 环境变量可以强制指定后端接口类型，覆盖工具的自动检测逻辑。</p>
+<pre><code># 强制使用指定后端接口
+export HWCPIPE_BACKEND_INTERFACE=mali_profiler
+
+# 然后运行工具
+gpu-counter-tool --list-counters</code></pre>
+
+<h3>适用场景</h3>
+<ul>
+<li>自动检测失败时，手动指定后端类型</li>
+<li>调试和开发时测试不同的后端实现</li>
+<li>在非标准环境中使用工具</li>
+</ul>
+
+<h3>使用示例</h3>
+<pre><code># Linux 上强制指定后端
+HWCPIPE_BACKEND_INTERFACE=mali_profiler gpu-counter-tool --list-gpus
+
+# Android 上强制指定后端
+adb shell HWCPIPE_BACKEND_INTERFACE=mali_profiler /data/local/tmp/gpu-counter-tool --list-gpus</code></pre>
+
+<div class="callout callout-note">
+<strong>注意</strong>
+强制指定不兼容的后端类型可能导致工具无法正常工作。建议仅在自动检测失败或开发调试时使用此环境变量。
+</div>
+</section>
+
+<!-- 附录 -->
+<section class="section" id="appendix">
+<h2>附录：完整命令行参考</h2>
+<pre><code>gpu-counter-tool [选项]
+
+选项：
+  --list-gpus            列出所有检测到的 GPU 设备
+  --list-counters        列出当前 GPU 支持的所有计数器
+  -d, --device N         指定 GPU 设备编号（默认：0）
+  -i, --interval MS      采样间隔，单位毫秒（默认：100）
+  -t, --duration SEC     监控时长，单位秒（0 = 持续运行直到 Ctrl+C）
+  -o, --output FILE      将计数器数据写入 CSV 文件
+  -p, --process NAME     仅在指定进程运行期间进行监控
+  --pid PID              仅在指定 PID 存活期间进行监控
+  -v, --verbose          详细输出模式
+  -h, --help             显示帮助信息
+
+环境变量：
+  HWCPIPE_BACKEND_INTERFACE  强制指定后端接口类型</code></pre>
+</section>
+
+</div>
+</main>
+
+<script>
+(function(){
+  var hamburger=document.getElementById('hamburger');
+  var sidebar=document.getElementById('sidebar');
+  var overlay=document.getElementById('overlay');
+  var navLinks=document.querySelectorAll('#sidebarNav a');
+
+  function toggleSidebar(){
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+  }
+  hamburger.addEventListener('click',toggleSidebar);
+  overlay.addEventListener('click',toggleSidebar);
+
+  navLinks.forEach(function(link){
+    link.addEventListener('click',function(){
+      if(window.innerWidth<=900){
+        sidebar.classList.remove('open');
+        overlay.classList.remove('show');
+      }
+    });
+  });
+
+  function updateActiveNav(){
+    var sections=document.querySelectorAll('.section');
+    var scrollY=window.scrollY+80;
+    var current='';
+    sections.forEach(function(sec){
+      if(sec.offsetTop<=scrollY){
+        current=sec.id;
+      }
+    });
+    navLinks.forEach(function(link){
+      link.classList.remove('active');
+      if(link.getAttribute('href')==='#'+current){
+        link.classList.add('active');
+      }
+    });
+  }
+  window.addEventListener('scroll',updateActiveNav);
+  updateActiveNav();
+})();
+</script>
+</body>
+</html>
